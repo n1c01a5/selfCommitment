@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@kleros/kleros-interaction": "^0.9.3",
+    "kleros-interaction": "^0.1.1",
+    "truffle-assertions": "^0.9.1"
+  }
+}
