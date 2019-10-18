@@ -1555,7 +1555,7 @@ contract GoalBet is IArbitrable {
     bytes calldata _arbitratorExtraData,
     uint[3] calldata _stakeMultiplier
   ) external payable {
-    require(msg.value > 0);
+    require(msg.value > 10000);
     require(_ratio[0] > 1);
     require(_ratio[0] > _ratio[1]);
     require(_period[0] > now);
@@ -1586,8 +1586,10 @@ contract GoalBet is IArbitrable {
 
     address payable taker = msg.sender;
 
-    uint ratio = bet.ratio[0] / bet.ratio[1];
-    uint maxAmountToBet = bet.amount[0] / (ratio - 1) - bet.amount[1];
+    // r = bet.ratio[0] / bet.ratio[1]
+    // maxAmountToBet = x / (r-1) - y
+    // maxAmountToBet = x * x/(rx-x)
+    uint maxAmountToBet = bet.amount[0] * bet.amount[0] / (bet.ratio[0] * bet.amount[0] / bet.ratio[1] - bet.amount[0]) - bet.amount[1];
     uint amountBet = msg.value <= maxAmountToBet ? msg.value : maxAmountToBet;
 
     bet.amount[1] += amountBet;
@@ -1982,7 +1984,7 @@ contract GoalBet is IArbitrable {
       round.contributions[_beneficiary][uint(bet.ruling)] = 0;
 
       if(bet.amountTaker[_beneficiary] > 0 && bet.ruling != Party.Asker) {
-        reward += bet.amountTaker[_beneficiary] * (bet.ratio[0] / bet.ratio[1]);
+        reward += bet.amountTaker[_beneficiary] * bet.ratio[0] / bet.ratio[1];
         bet.amountTaker[_beneficiary] = 0;
       }
     }
@@ -2054,7 +2056,6 @@ contract GoalBet is IArbitrable {
   ) external view returns (uint maxAmountToBet) {
     Bet storage bet = bets[_id];
 
-    uint ratio = bet.ratio[0] / bet.ratio[1];
-    maxAmountToBet = bet.amount[0] / (ratio - 1) - bet.amount[1];
+    maxAmountToBet = bet.amount[0] * bet.amount[0] / (bet.ratio[0] * bet.amount[0] / bet.ratio[1] - bet.amount[0]) - bet.amount[1];
   }
 }
