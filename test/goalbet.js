@@ -479,7 +479,7 @@ contract('GoalBet', (accounts) => {
       const balanceAcc3AfterTx3 = await web3.eth.getBalance(accounts[7])
 
       assert.equal(
-        (Number(balanceAcc3AfterTx3) + (gasPriceTx3 * gasUsedTx3) - 10000).toString(), 
+        (Number(balanceAcc3AfterTx3) + (gasPriceTx3 * gasUsedTx3)).toString(), 
         Number(balanceAcc3AfterTx2), 
         "Must be equal (tx3)"
       )
@@ -500,7 +500,7 @@ contract('GoalBet', (accounts) => {
       assert.equal(
         balanceAcc3AfterTimeOutByAsker,
         (Number(balanceAcc3AfterTx3) + 5000000000000000000 + 1000).toString(), 
-        "Must be equal (tx3)"
+        "Must be equal (tx4)"
       )
     })
   })
