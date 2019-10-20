@@ -1559,7 +1559,7 @@ contract GoalBet is IArbitrable {
     require(_ratio[0] > 1);
     require(_ratio[0] > _ratio[1]);
     require(_period[0] > now);
-    uint amountXratio1 = msg.value * _ratio[0]; // _ratio1 > (_ratio1/_ratio2)
+    uint amountXratio1 = msg.value * _ratio[0]; // _ratio0 > (_ratio0/_ratio1)
     require(amountXratio1/msg.value == _ratio[0]); // To prevent multiply overflow.
 
     Bet storage bet = bets[bets.length++];
@@ -1588,8 +1588,8 @@ contract GoalBet is IArbitrable {
 
     // r = bet.ratio[0] / bet.ratio[1]
     // maxAmountToBet = x / (r-1) - y
-    // maxAmountToBet = x * x/(rx-x)
-    uint maxAmountToBet = bet.amount[0] * bet.amount[0] / (bet.ratio[0] * bet.amount[0] / bet.ratio[1] - bet.amount[0]) - bet.amount[1];
+    // maxAmountToBet = x*x / (rx-x) - y
+    uint maxAmountToBet = bet.amount[0]*bet.amount[0] / (bet.ratio[0]*bet.amount[0]/bet.ratio[1] - bet.amount[0]) - bet.amount[1];
     uint amountBet = msg.value <= maxAmountToBet ? msg.value : maxAmountToBet;
 
     bet.amount[1] += amountBet;
@@ -1616,10 +1616,10 @@ contract GoalBet is IArbitrable {
   /* Section of Claims or Dispute Resolution */
 
   /** @dev Pay the arbitration fee to claim the bet. To be called by the asker. UNTRUSTED.
-    *  Note that the arbitrator can have createDispute throw,
-    *  which will make this function throw and therefore lead to a party being timed-out.
-    *  This is not a vulnerability as the arbitrator can rule in favor of one party anyway.
-    *  @param _id The index of the bet.
+    * Note that the arbitrator can have createDispute throw,
+    * which will make this function throw and therefore lead to a party being timed-out.
+    * This is not a vulnerability as the arbitrator can rule in favor of one party anyway.
+    * @param _id The index of the bet.
     */
   function claimAsker(uint _id) public payable {
     Bet storage bet = bets[_id];
@@ -1660,7 +1660,7 @@ contract GoalBet is IArbitrable {
   }
 
   /** @dev Pay the arbitration fee to claim a bet. To be called by the taker. UNTRUSTED.
-    *  @param _id The index of the claim.
+    * @param _id The index of the claim.
     */
   function claimTaker(uint _id) public payable {
     Bet storage bet = bets[_id];
@@ -1707,20 +1707,6 @@ contract GoalBet is IArbitrable {
     } else { // The taker has also paid the fee. We create the dispute.
       raiseDispute(_id, arbitrationCost);
     }
-  }
-
-  /** @dev Get the claim cost
-    * @param _id The index of the claim.
-    */
-  function getClaimCost(uint _id)
-    external
-    view
-    returns (uint claimCost)
-  {
-    Bet storage bet = bets[_id];
-
-    uint arbitrationCost = bet.arbitrator.arbitrationCost(bet.arbitratorExtraData);
-    claimCost = arbitrationCost.addCap((arbitrationCost.mulCap(bet.stakeMultiplier[0])) / MULTIPLIER_DIVISOR);
   }
 
   /** @dev Make a fee contribution.
@@ -2051,11 +2037,25 @@ contract GoalBet is IArbitrable {
   // *     View functions       * //
   // **************************** //
 
+  /** @dev Get the claim cost
+    * @param _id The index of the claim.
+    */
+  function getClaimCost(uint _id)
+    external
+    view
+    returns (uint claimCost)
+  {
+    Bet storage bet = bets[_id];
+
+    uint arbitrationCost = bet.arbitrator.arbitrationCost(bet.arbitratorExtraData);
+    claimCost = arbitrationCost.addCap((arbitrationCost.mulCap(bet.stakeMultiplier[0])) / MULTIPLIER_DIVISOR);
+  }
+
   function getMaxAmountToBet(
     uint _id
   ) external view returns (uint maxAmountToBet) {
     Bet storage bet = bets[_id];
 
-    maxAmountToBet = bet.amount[0] * bet.amount[0] / (bet.ratio[0] * bet.amount[0] / bet.ratio[1] - bet.amount[0]) - bet.amount[1];
+    maxAmountToBet = bet.amount[0]*bet.amount[0] / (bet.ratio[0]*bet.amount[0] / bet.ratio[1] - bet.amount[0]) - bet.amount[1];
   }
 }
