@@ -1,7 +1,17 @@
 {
-  "dependencies": {
-    "@kleros/kleros-interaction": "^0.9.3",
-    "kleros-interaction": "^0.1.1",
-    "truffle-assertions": "^0.9.1"
+  "name": "goalbet",
+  "version": "0.0.1",
+  "description": "Self commitment",
+  "scripts": {
+    "clean": "rm -rf build node_modules",
+    "build": "npm run build:contracts",
+    "build:contracts": "truffle compile",
+    "test": "truffle compile && truffle test"
+  },
+  "author": "Wagner Nicolas <contact@wagner-nicolas.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "truffle": "^5.0.43",
+    "truffle-assertions": "^0.9.2"
   }
 }
