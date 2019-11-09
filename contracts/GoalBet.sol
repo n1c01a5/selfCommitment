@@ -1,4 +1,4 @@
-pragma solidity >=0.4.18 <0.6.0;
+pragma solidity ^0.5;
 
 /* NOTE: @kleros/kleros-interraction is not compatible with this solc version */
 /* NOTE: I put all the arbitration files in the same file because the dependancy between the different contracts is a real "headache" */
@@ -534,6 +534,7 @@ interface PermissionInterface {
 /**
  *  @title ArbitrableBetList
  *  This smart contract is a viewer moderation for the bet goal contract.
+ *  This is working progress.
  */
 contract ArbitrableBetList is IArbitrable {
   using CappedMath for uint; // Operations bounded between 0 and 2**256 - 1.
@@ -722,18 +723,20 @@ contract ArbitrableBetList is IArbitrable {
 
   /** @dev Submits a request to change an address status. Accepts enough ETH to fund a potential dispute considering the current required amount and reimburses the rest. TRUSTED.
     * @param _betID The address.
+    * @param _sender The address of the sender.
     */
-  function requestStatusChange(uint _betID)
+  function requestStatusChange(uint _betID, address payable _sender)
       external
       payable
   {
     Bet storage bet = bets[_betID];
 
     if (bet.requests.length == 0) {
-      require(msg.sender == goalBetRegistry); // Only the bet Registry can send a new bet.
       // Initial bet registration.
+      require(msg.sender == goalBetRegistry);
       betList.push(_betID);
-      emit BetSubmitted(_betID, msg.sender);
+
+      emit BetSubmitted(_betID, _sender);
     }
 
     // Update bet status.
@@ -746,7 +749,7 @@ contract ArbitrableBetList is IArbitrable {
 
     // Setup request.
     Request storage request = bet.requests[bet.requests.length++];
-    request.parties[uint(Party.Requester)] = msg.sender;
+    request.parties[uint(Party.Requester)] = _sender;
     request.submissionTime = now;
     request.arbitrator = arbitrator;
     request.arbitratorExtraData = arbitratorExtraData;
@@ -757,7 +760,7 @@ contract ArbitrableBetList is IArbitrable {
     // Amount required to fully the requester: requesterBaseDeposit + arbitration cost + (arbitration cost * multiplier).
     uint arbitrationCost = request.arbitrator.arbitrationCost(request.arbitratorExtraData);
     uint totalCost = arbitrationCost.addCap((arbitrationCost.mulCap(sharedStakeMultiplier)) / MULTIPLIER_DIVISOR).addCap(requesterBaseDeposit);
-    contribute(round, Party.Requester, msg.sender, msg.value, totalCost);
+    contribute(round, Party.Requester, _sender, msg.value, totalCost);
     require(round.paidFees[uint(Party.Requester)] >= totalCost, "You must fully fund your side.");
     round.hasPaid[uint(Party.Requester)] = true;
 
@@ -769,6 +772,17 @@ contract ArbitrableBetList is IArbitrable {
       false,
       false
     );
+  }
+
+  /** @dev Get the total cost
+   */
+  function getTotalCost()
+    external
+    view
+    returns (uint totalCost)
+  {
+    uint arbitrationCost = arbitrator.arbitrationCost(arbitratorExtraData);
+    totalCost = arbitrationCost.addCap((arbitrationCost.mulCap(sharedStakeMultiplier)) / MULTIPLIER_DIVISOR).addCap(requesterBaseDeposit);
   }
 
   /** @dev Challenges the latest request of a bet. Accepts enough ETH to fund a potential dispute considering the current required amount. Reimburses unused ETH. TRUSTED.
@@ -1253,101 +1267,6 @@ contract ArbitrableBetList is IArbitrable {
     return betList.length;
   }
 
-  // FIXME: I comment these lines because with these features the contract deployment runs an "out of gas".
-  // /** @dev Return the numbers of bets with each status. This function is O(n), where n is the number of bets. This could exceed the gas limit, therefore this function should only be used for interface display and not by other contracts.
-  //   *  @return The numbers of bets in the list per status.
-  //   */
-  // function countByStatus()
-  //   external
-  //   view
-  //   returns (
-  //   uint absent,
-  //   uint registered,
-  //   uint registrationRequest,
-  //   uint clearingRequest,
-  //   uint challengedRegistrationRequest,
-  //   uint challengedClearingRequest
-  //   )
-  // {
-  //   for (uint i = 0; i < betList.length; i++) {
-  //     Bet storage bet = bets[betList[i]];
-  //     Request storage request = bet.requests[bet.requests.length - 1];
-
-  //     if (bet.status == BetStatus.Absent) absent++;
-  //     else if (bet.status == BetStatus.Registered) registered++;
-  //     else if (bet.status == BetStatus.RegistrationRequested && !request.disputed) registrationRequest++;
-  //     else if (bet.status == BetStatus.ClearingRequested && !request.disputed) clearingRequest++;
-  //     else if (bet.status == BetStatus.RegistrationRequested && request.disputed) challengedRegistrationRequest++;
-  //     else if (bet.status == BetStatus.ClearingRequested && request.disputed) challengedClearingRequest++;
-  //   }
-  // }
-
-  // /** @dev Return the values of the bets the query finds. This function is O(n), where n is the number of bets. This could exceed the gas limit, therefore this function should only be used for interface display and not by other contracts.
-  //   *  @param _cursor The bet index from which to start iterating. To start from either the oldest or newest item.
-  //   *  @param _count The number of bets to return.
-  //   *  @param _filter The filter to use. Each element of the array in sequence means:
-  //   *  - Include absent bets in result.
-  //   *  - Include registered bets in result.
-  //   *  - Include bets with registration requests that are not disputed in result.
-  //   *  - Include bets with clearing requests that are not disputed in result.
-  //   *  - Include disputed bets with registration requests in result.
-  //   *  - Include disputed bets with clearing requests in result.
-  //   *  - Include bets submitted by the caller.
-  //   *  - Include bets challenged by the caller.
-  //   *  @param _oldestFirst Whether to sort from oldest to the newest item.
-  //   *  @return The values of the bets found and whether there are more bets for the current filter and sort.
-  //   */
-  // function queryBets(uint _cursor, uint _count, bool[8] calldata _filter, bool _oldestFirst)
-  //   external
-  //   view
-  //   returns (uint[] memory values, bool hasMore)
-  // {
-  //   uint cursorIndex;
-  //   values = new uint[](_count);
-  //   uint index = 0;
-
-  //   if (_cursor == 0)
-  //     cursorIndex = 0;
-  //   else {
-  //     for (uint j = 0; j < betList.length; j++) {
-  //       if (betList[j] == _cursor) {
-  //         cursorIndex = j;
-  //         break;
-  //       }
-  //     }
-  //     require(cursorIndex != 0);
-  //   }
-
-  //   for (
-  //     uint i = cursorIndex == 0 ? (_oldestFirst ? 0 : 1) : (_oldestFirst ? cursorIndex + 1 : betList.length - cursorIndex + 1);
-  //     _oldestFirst ? i < betList.length : i <= betList.length;
-  //     i++
-  //   ) { // Oldest or newest first.
-  //     Bet storage bet = bets[betList[_oldestFirst ? i : betList.length - i]];
-  //     Request storage request = bet.requests[bet.requests.length - 1];
-  //     if (
-  //       /* solium-disable operator-whitespace */
-  //       (_filter[0] && bet.status == BetStatus.Absent) ||
-  //       (_filter[1] && bet.status == BetStatus.Registered) ||
-  //       (_filter[2] && bet.status == BetStatus.RegistrationRequested && !request.disputed) ||
-  //       (_filter[3] && bet.status == BetStatus.ClearingRequested && !request.disputed) ||
-  //       (_filter[4] && bet.status == BetStatus.RegistrationRequested && request.disputed) ||
-  //       (_filter[5] && bet.status == BetStatus.ClearingRequested && request.disputed) ||
-  //       (_filter[6] && request.parties[uint(Party.Requester)] == msg.sender) || // My Submissions.
-  //       (_filter[7] && request.parties[uint(Party.Challenger)] == msg.sender) // My Challenges.
-  //       /* solium-enable operator-whitespace */
-  //     ) {
-  //       if (index < _count) {
-  //         values[index] = betList[_oldestFirst ? i : betList.length - i];
-  //         index++;
-  //       } else {
-  //         hasMore = true;
-  //         break;
-  //       }
-  //     }
-  //   }
-  // }
-
   /** @dev Gets the contributions made by a party for a given round of a request.
     *  @param _betID The bet index.
     *  @param _request The position of the request.
@@ -1462,6 +1381,8 @@ contract GoalBet is IArbitrable {
     address[3] parties;
     uint[2] amount; // betterAmount (max), takerTotalAmount
     mapping(address => uint) amountTaker;
+    bool isPrivate;
+    mapping(address => bool) allowAddress;
     Arbitrator arbitrator;
     bytes arbitratorExtraData;
     uint[3] stakeMultiplier;
@@ -1547,20 +1468,36 @@ contract GoalBet is IArbitrable {
   // *    Modifying the state   * //
   // **************************** //
 
+  /** @dev To add a new bet. UNTRUSTED.
+    *  @param _description The description of the bet.
+    *  @param _period The different periods of the bet.
+    *  @param _ratio The ratio of the bet.
+    *  @param _allowAddress Addresses who are allowed to bet. Empty for all addresses.
+    *  @param _arbitrator The arbitrator of the bet.
+    *  @param _arbitratorExtraData The configuration for the arbitration.
+    *  @param _stakeMultiplier The multipler of the deposit for the different parties.
+    */
   function ask(
     string calldata _description,
     uint[3] calldata _period,
     uint[2] calldata _ratio,
+    address[] calldata _allowAddress,
     Arbitrator _arbitrator,
     bytes calldata _arbitratorExtraData,
     uint[3] calldata _stakeMultiplier
   ) external payable {
-    require(msg.value > 10000);
+    ArbitrableBetList betArbitrableListInstance = ArbitrableBetList(betArbitrableList);
+    uint totalCost = betArbitrableListInstance.getTotalCost();
+
+    require(msg.value > totalCost);
+    require(msg.value - totalCost >= 10000);
     require(_ratio[0] > 1);
     require(_ratio[0] > _ratio[1]);
     require(_period[0] > now);
     uint amountXratio1 = msg.value * _ratio[0]; // _ratio0 > (_ratio0/_ratio1)
     require(amountXratio1/msg.value == _ratio[0]); // To prevent multiply overflow.
+
+    betArbitrableListInstance.requestStatusChange.value(totalCost)(bets.length, msg.sender);
 
     Bet storage bet = bets[bets.length++];
 
@@ -1568,12 +1505,23 @@ contract GoalBet is IArbitrable {
     bet.description = _description;
     bet.period = _period;
     bet.ratio = _ratio;
-    bet.amount = [msg.value, 0];
+    bet.amount = [msg.value - totalCost, 0];
+
+    if (_allowAddress.length > 0) {
+      for(uint i; i < _allowAddress.length; i++)
+        bet.allowAddress[_allowAddress[i]] = true;
+
+      bet.isPrivate = true;
+    }
+
     bet.arbitrator = _arbitrator;
     bet.arbitratorExtraData = _arbitratorExtraData;
     bet.stakeMultiplier = _stakeMultiplier;
   }
 
+  /** @dev To accept a bet. UNTRUSTED.
+    *  @param _id The id of the bet.
+    */
   function take(
     uint _id
   ) external payable {
@@ -1583,6 +1531,9 @@ contract GoalBet is IArbitrable {
 
     require(now < bet.period[0], "Should bet before the end period bet.");
     require(bet.amount[0] > bet.amount[1]);
+
+    if (bet.isPrivate)
+      require(bet.allowAddress[msg.sender]);
 
     address payable taker = msg.sender;
 
@@ -1599,6 +1550,9 @@ contract GoalBet is IArbitrable {
       taker.transfer(msg.value - maxAmountToBet);
   }
 
+  /** @dev Withdraw the bet if no one took it. TRUSTED.
+   *  @param _id The id of the bet.
+  */
   function withdraw(
     uint _id
   ) external {
@@ -1607,10 +1561,7 @@ contract GoalBet is IArbitrable {
     require(bet.amount[1] == 0);
     require(now > bet.period[0], "Should end period bet finished.");
 
-    address payable asker = address(uint160(bet.parties[1]));
-
-    asker.send(bet.amount[0]);
-    bet.amount[0] = 0;
+    executeRuling(_id, uint(Party.Asker));
   }
 
   /* Section of Claims or Dispute Resolution */
@@ -1910,7 +1861,7 @@ contract GoalBet is IArbitrable {
     Round storage round = bet.rounds[bet.rounds.length - 1];
 
     // The ruling is inverted if the loser paid its fees.
-    // If one side paid its fees, the ruling is in its favor. 
+    // If one side paid its fees, the ruling is in its favor.
     // Note that if the other side had also paid, an appeal would have been created.
     if (round.hasPaid[uint(Party.Asker)] == true)
       resultRuling = Party.Asker;
@@ -1925,15 +1876,15 @@ contract GoalBet is IArbitrable {
     executeRuling(id, uint(resultRuling));
   }
 
-  /** @dev Reimburses contributions if no disputes were raised. 
+  /** @dev Reimburses contributions if no disputes were raised.
     * If a dispute was raised, sends the fee stake and the reward for the winner.
     * @param _beneficiary The address that made contributions to a request.
     * @param _id The ID of the bet.
     * @param _round The round from which to withdraw.
     */
   function withdrawFeesAndRewards(
-    address payable _beneficiary, 
-    uint _id, 
+    address payable _beneficiary,
+    uint _id,
     uint _round
   ) public {
     Bet storage bet = bets[_id];
@@ -2058,4 +2009,65 @@ contract GoalBet is IArbitrable {
 
     maxAmountToBet = bet.amount[0]*bet.amount[0] / (bet.ratio[0]*bet.amount[0] / bet.ratio[1] - bet.amount[0]) - bet.amount[1];
   }
+
+  /** @dev Return the values of the bets the query finds. This function is O(n), where n is the number of bets. This could exceed the gas limit, therefore this function should only be used for interface display and not by other contracts.
+   *  @param _cursor The bet index from which to start iterating. To start from either the oldest or newest item.
+   *  @param _count The number of bets to return.
+   *  @param _filter The filter to use. Each element of the array in sequence means:
+   *  - Include absent bets in result.
+   *  - Include registered bets in result.
+   *  - Include bets with registration requests that are not disputed in result.
+   *  - Include bets with clearing requests that are not disputed in result.
+   *  - Include disputed bets with registration requests in result.
+   *  - Include disputed bets with clearing requests in result.
+   *  - Include bets submitted by the caller.
+   *  - Include bets challenged by the caller.
+   *  - Include bets created.
+   *  - Include bets taken.
+   *  @return The values of the bets found and whether there are more bets for the current filter and sort.
+   */
+  function queryBets(uint _cursor, uint _count, bool[10] calldata _filter)
+    external
+    view
+    returns (uint[] memory values, bool hasMore)
+  {
+    values = new uint[](_count);
+    uint index = 0;
+
+    for (
+      uint i = _cursor == 0 ? bets.length - 1 : bets.length - 1 - _cursor;
+      i < bets.length;
+      i++
+    ) {
+       Bet storage bet = bets[i];
+
+       ArbitrableBetList betArbitrableListInstance = ArbitrableBetList(betArbitrableList);
+
+       (ArbitrableBetList.BetStatus arbitrableBetlistStatus, uint numberOfRequests) = betArbitrableListInstance.getBetInfo(i);
+       (bool disputed, , , , address[3] memory parties, , , , ) = betArbitrableListInstance.getRequestInfo(i, numberOfRequests - 1);
+
+       if (
+        /* solium-disable operator-whitespace */
+        (_filter[0] && arbitrableBetlistStatus == ArbitrableBetList.BetStatus.Absent) ||
+        (_filter[1] && arbitrableBetlistStatus == ArbitrableBetList.BetStatus.Registered) ||
+        (_filter[2] && arbitrableBetlistStatus == ArbitrableBetList.BetStatus.RegistrationRequested && !disputed) ||
+        (_filter[3] && arbitrableBetlistStatus == ArbitrableBetList.BetStatus.ClearingRequested && !disputed) ||
+        (_filter[4] && arbitrableBetlistStatus == ArbitrableBetList.BetStatus.RegistrationRequested && disputed) ||
+        (_filter[5] && arbitrableBetlistStatus == ArbitrableBetList.BetStatus.ClearingRequested && disputed) ||
+        (_filter[6] && parties[1] == msg.sender) || // My Submissions.
+        (_filter[7] && parties[2] == msg.sender) || // My Challenges.
+        (_filter[8] && bet.parties[1] == msg.sender) || // My bets.
+        (_filter[9] && bet.parties[2] == msg.sender) // My taken bets.
+        /* solium-enable operator-whitespace */
+       ) {
+        if (index < _count) {
+          values[index] = i;
+          index++;
+        } else {
+          hasMore = true;
+          break;
+        }
+       }
+     }
+   }
 }
