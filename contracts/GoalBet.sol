@@ -121,7 +121,7 @@ contract Arbitrable is IArbitrable {
   function rule(uint _disputeID, uint _ruling) public {
     emit Ruling(Arbitrator(msg.sender), _disputeID, _ruling);
 
-    executeRuling(_disputeID,_ruling);
+    executeRuling(_disputeID, _ruling);
   }
 
 
@@ -1888,6 +1888,7 @@ contract GoalBet is IArbitrable {
     uint _round
   ) public {
     Bet storage bet = bets[_id];
+
     Round storage round = bet.rounds[_round];
     // The request must be resolved.
     require(bet.status == Status.Resolved); // solium-disable-line error-reason
@@ -1951,8 +1952,10 @@ contract GoalBet is IArbitrable {
         bet.amount[0] = 0;
       }
 
-      withdrawFeesAndRewards(asker, _id, 0);
-      withdrawFeesAndRewards(taker, _id, 0);
+      if (bet.rounds.length != 0) {
+        withdrawFeesAndRewards(asker, _id, 0);
+        withdrawFeesAndRewards(taker, _id, 0);
+      }
     } else if (_ruling == uint(Party.Asker)) {
       require(bet.amount[0] > 0);
 
@@ -1961,12 +1964,13 @@ contract GoalBet is IArbitrable {
       bet.amount[0] = 0;
       bet.amount[1] = 0;
 
-      withdrawFeesAndRewards(asker, _id, 0);
+      if (bet.rounds.length != 0)
+        withdrawFeesAndRewards(asker, _id, 0);
     } else {
-      withdrawFeesAndRewards(taker, _id, 0);
+      if (bet.rounds.length != 0)
+        withdrawFeesAndRewards(taker, _id, 0);
     }
   }
-
 
   /* Governance */
 
