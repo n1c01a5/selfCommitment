@@ -113,8 +113,8 @@ contract('GoalBet', (accounts) => {
         [1,1,1],
         {
           from: accounts[3],
-          value: Number(100000000000000 + 10000002000).toString(), // + totalCost
-          gasPrice: "100"
+          value: web3.utils.toBN("100000000000000").add(web3.utils.toBN("10000002000")).toString(), // 100000000000000 + totalCost
+          gasPrice: "100000000000"
         }
       )
 
@@ -124,7 +124,7 @@ contract('GoalBet', (accounts) => {
       // Balance after tx0
       const balanceAcc1AfterTx0 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
 
-      const txCost = gasUsedTx0.mul(web3.utils.toBN('100'))
+      const txCost = gasUsedTx0.mul(web3.utils.toBN("100000000000"))
 
       assert.equal(
         (
@@ -158,7 +158,7 @@ contract('GoalBet', (accounts) => {
         {
           from: taker,
           value: "100000000000000",
-          gasPrice: "100"
+          gasPrice: "100000000000"
         }
       )
 
@@ -168,7 +168,7 @@ contract('GoalBet', (accounts) => {
       // Balance after tx0
       const balanceAcc2AfterTx1 = web3.utils.toBN(await web3.eth.getBalance(accounts[2]))
 
-      const tx1Cost = gasUsedTx1.mul(web3.utils.toBN("100"))
+      const tx1Cost = gasUsedTx1.mul(web3.utils.toBN("100000000000"))
 
       assert.equal(
         (balanceAcc2AfterTx1.add(tx1Cost).add(web3.utils.toBN("100000000000000"))).toString(),
@@ -195,14 +195,14 @@ contract('GoalBet', (accounts) => {
         "0",
         {
           value: "1000",
-          gasPrice: "100",
+          gasPrice: "100000000000",
           from: accounts[3]
         }
       )
 
       // Obtain gas used from the tx2 receipt
       const gasUsedTx2 = web3.utils.toBN(tx2Receipt.receipt.gasUsed)
-      const tx2Cost = gasUsedTx2.mul(web3.utils.toBN('100'))
+      const tx2Cost = gasUsedTx2.mul(web3.utils.toBN('100000000000'))
 
       // Balance after tx2
       const balanceAcc1AfterTx2 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
@@ -248,7 +248,7 @@ contract('GoalBet', (accounts) => {
       await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
 
       /******************************* Bet tx *******************************/
-      const initialBalanceAcc1 = await web3.eth.getBalance(accounts[8])
+      const initialBalanceAcc1 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]))
 
       const endBetPeriod = Math.floor(Date.now() / 1000) + 1
       const startClaimPeriod = Math.floor(Date.now() / 1000) + 2
@@ -277,14 +277,13 @@ contract('GoalBet', (accounts) => {
       const gasUsedTx0 = tx0Receipt.receipt.gasUsed
 
       // Obtain gasPrice from the transaction
-      const tx0 = await web3.eth.getTransaction(tx0Receipt.tx)
-      const gasPriceTx0 = tx0.gasPrice
+      const tx0Cost = gasUsedTx2.mul(web3.utils.toBN("100000000000"))
 
       // Balance after tx0
-      const balanceAcc1AfterTx0 = await web3.eth.getBalance(accounts[8])
+      const balanceAcc1AfterTx0 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]))
 
       assert.equal(
-        (Number(balanceAcc1AfterTx0) + (gasPriceTx0 * gasUsedTx0) + 10000000000000000000).toString(),
+        balanceAcc1AfterTx0.add(tx0Cost).add(web3.utils.toBN("10000000000000000000")).toString(),
         initialBalanceAcc1.toString(),
         "Must be equal (tx0)"
       )
@@ -302,15 +301,15 @@ contract('GoalBet', (accounts) => {
       )
 
       // Balance after tx1
-      const balanceAcc1AfterTx1 = await web3.eth.getBalance(accounts[8])
+      const balanceAcc1AfterTx1 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]))
 
       // Acc1 must increase his balance of 1 ether
       assert.equal(
-        balanceAcc1AfterTx1,
-        (Number(balanceAcc1AfterTx0) + 10000000000000000000).toString(),
+        balanceAcc1AfterTx1.toString(),
+        balanceAcc1AfterTx0.add(web3.utils.toBN("10000000000000000000")).toString(),
         "Must be equal (tx1)"
       )
-    });
+    })
 
     it('should bet revert if the ratio[1] > ratio[0]', async () => {
       const goalBetInstance = await GoalBet.new(governor)
@@ -331,12 +330,13 @@ contract('GoalBet', (accounts) => {
             endClaimendPeriod.toString()
           ],
           ["42", "101"],
+          [],
           arbitrableBetList.address.toString(),
           "0x0",
           [0,0,0],
           {
             from: accounts[1],
-            value: "10000000000000000000", // 1 ether
+            value: web3.utils.toBN("10000000000000000000").add(web3.utils.toBN("10000002000")).toString(), // 1 Ether + totalCost
             gasPrice: "100000000000"
           }
         ),
