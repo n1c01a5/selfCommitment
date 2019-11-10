@@ -911,7 +911,12 @@ contract ArbitrableBetList is IArbitrable {
     require(request.resolved); // solium-disable-line error-reason
 
     uint reward;
-    if (!request.disputed || request.ruling == Party.None) {
+    if (!round.hasPaid[uint(Party.Requester)] || !round.hasPaid[uint(Party.Challenger)]) {
+      // Reimburse if not enough fees were raised to appeal the ruling.
+      reward = round.contributions[_beneficiary][uint(Party.Requester)] + round.contributions[_beneficiary][uint(Party.Challenger)];
+      round.contributions[_beneficiary][uint(Party.Requester)] = 0;
+      round.contributions[_beneficiary][uint(Party.Challenger)] = 0;
+    } else if (request.ruling == Party.None) {
       // No disputes were raised, or there isn't a winner and loser. Reimburse unspent fees proportionally.
       uint rewardRequester = round.paidFees[uint(Party.Requester)] > 0
         ? (round.contributions[_beneficiary][uint(Party.Requester)] * round.feeRewards) / (round.paidFees[uint(Party.Challenger)] + round.paidFees[uint(Party.Requester)])
@@ -1823,20 +1828,20 @@ contract GoalBet is IArbitrable {
     Party loser;
 
     if (winner == Party.Asker)
-        loser = Party.Taker;
+      loser = Party.Taker;
     else if (winner == Party.Taker)
-        loser = Party.Asker;
+      loser = Party.Asker;
 
     require(!(_side==loser) || (now-appealPeriodStart < (appealPeriodEnd-appealPeriodStart)/2), "The loser must contribute during the first half of the appeal period.");
 
     uint multiplier;
 
     if (_side == winner)
-        multiplier = bet.stakeMultiplier[1];
+      multiplier = bet.stakeMultiplier[1];
     else if (_side == loser)
-        multiplier = bet.stakeMultiplier[2];
+      multiplier = bet.stakeMultiplier[2];
     else
-        multiplier = bet.stakeMultiplier[0];
+      multiplier = bet.stakeMultiplier[0];
 
     uint appealCost = bet.arbitrator.appealCost(bet.disputeID, bet.arbitratorExtraData);
     uint totalCost = appealCost.addCap((appealCost.mulCap(multiplier)) / MULTIPLIER_DIVISOR);
@@ -1906,7 +1911,17 @@ contract GoalBet is IArbitrable {
 
     uint reward;
 
-    if (bet.ruling == Party.None) {
+    if (!round.hasPaid[uint(Party.Asker)] || !round.hasPaid[uint(Party.Taker)]) {
+      // Reimburse if not enough fees were raised to appeal the ruling.
+      reward = round.contributions[_beneficiary][uint(Party.Asker)] + round.contributions[_beneficiary][uint(Party.Taker)];
+      round.contributions[_beneficiary][uint(Party.Asker)] = 0;
+      round.contributions[_beneficiary][uint(Party.Taker)] = 0;
+
+      if(bet.amountTaker[_beneficiary] > 0 && bet.ruling != Party.Asker) {
+        reward += bet.amountTaker[_beneficiary] * bet.ratio[0] / bet.ratio[1];
+        bet.amountTaker[_beneficiary] = 0;
+      }
+    } else if (bet.ruling == Party.None) {
       // No disputes were raised, or there isn't a winner and loser. Reimburse unspent fees proportionally.
       uint rewardAsker = round.paidFees[uint(Party.Asker)] > 0
         ? (round.contributions[_beneficiary][uint(Party.Asker)] * round.feeRewards) / (round.paidFees[uint(Party.Taker)] + round.paidFees[uint(Party.Asker)])

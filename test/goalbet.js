@@ -535,7 +535,7 @@ contract('GoalBet', (accounts) => {
       // Balance after withdraw
       const balanceAcc1AfterWithdraw = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
 
-      // Acc1 must increase his balance of 0.8 ether
+      // Acc1 must increase his balance of 8.1 ether
       assert.equal(
         balanceAcc1AfterWithdraw.toString(),
         balanceAcc1AfterTx0.add(web3.utils.toBN("8100000000000000000")).toString(),
@@ -690,7 +690,7 @@ contract('GoalBet', (accounts) => {
 
       /******************************* Claim tx *******************************/
       // Wait 4s for the bet period end
-      await timeout(4000)
+      await timeout(4500)
 
       const tx3Receipt = await goalBetInstance.claimTaker(
         "0",
@@ -701,13 +701,13 @@ contract('GoalBet', (accounts) => {
         }
       )
 
-      // Obtain gas used from the tx3 receipt
+      // Obtain gas used from the tx3 receipt.
       const gasUsedTx3 = web3.utils.toBN(tx3Receipt.receipt.gasUsed)
 
-      // Obtain gasPrice from the transaction
+      // Obtain gasPrice from the transaction.
       const tx3Cost = gasUsedTx3.mul(web3.utils.toBN("100000000000"))
 
-      // Balance after tx3
+      // Balance after tx3.
       const balanceAcc3AfterTx3 = web3.utils.toBN(await web3.eth.getBalance(accounts[7]))
 
       assert.equal(
@@ -716,7 +716,7 @@ contract('GoalBet', (accounts) => {
         "Must be equal (tx3)"
       )
 
-      // Wait 4s for the bet period end
+      // Wait 4s for the bet period end.
       await timeout(4000)
 
       await goalBetInstance.timeOutByTaker(
@@ -727,10 +727,20 @@ contract('GoalBet', (accounts) => {
         }
       )
 
+      await goalBetInstance.withdrawFeesAndRewards(
+        accounts[7],
+        "0",
+        "0",
+        {
+          value: "0",
+          gasPrice: "100000000000"
+        }
+      )
+
       const balanceAcc3AfterTimeOutByAsker = web3.utils.toBN(await web3.eth.getBalance(accounts[7]))
 
       assert.equal(
-        balanceAcc3AfterTimeOutByAsker,
+        balanceAcc3AfterTimeOutByAsker.toString(),
         balanceAcc3AfterTx3.add(web3.utils.toBN("5000000000000000000")).add(web3.utils.toBN("1000")).toString(),
         "Must be equal (tx4)"
       )
