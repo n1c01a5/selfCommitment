@@ -113,7 +113,7 @@ contract('GoalBet', (accounts) => {
         [1,1,1],
         {
           from: accounts[3],
-          value: web3.utils.toBN("100000000000000").add(web3.utils.toBN("10000002000")).toString(), // 100000000000000 + totalCost
+          value: web3.utils.toBN("100000000000000").add(web3.utils.toBN("10000002000")).toString(), // 100000000000000 Wei + totalCost
           gasPrice: "100000000000"
         }
       )
@@ -150,7 +150,7 @@ contract('GoalBet', (accounts) => {
       assert.equal(
         maxAmountToBet.toString(),
         "100000000000000",
-        "MaxAmountToBet must be 1 ether"
+        "MaxAmountToBet must be 100000000000000 Wei"
       )
 
       const tx1Receipt = await goalBetInstance.take(
@@ -312,6 +312,235 @@ contract('GoalBet', (accounts) => {
       )
 
       // TODO: withdraw arbitrableBetList deposit
+    })
+
+    it('should bet, partial take and withdraw the rest by asker after the bet period (ratio 2:1)', async () => {
+      const goalBetInstance = await GoalBet.new(governor)
+
+      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
+      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+
+      /******************************* Bet tx *******************************/
+      const initialBalanceAcc1 = await web3.eth.getBalance(accounts[3])
+
+      const endBetPeriod = Math.floor((Date.now() + 100) / 1000) + 2
+      const startClaimPeriod = Math.floor(Date.now() / 1000) + 3
+      const endClaimEndPeriod = Math.floor(Date.now() / 1000) + 6
+
+      const tx0Receipt = await goalBetInstance.ask(
+        "_description",
+        [
+          endBetPeriod.toString(),
+          startClaimPeriod.toString(),
+          endClaimEndPeriod.toString()
+        ],
+        ["2", "1"],
+        [],
+        enhancedAppealableArbitrator.address.toString(),
+        "0x0",
+        [1,1,1],
+        {
+          from: accounts[3],
+          value: web3.utils.toBN("10000000000000000000").add(web3.utils.toBN("10000002000")).toString(), // 1 ether + totalCost
+          gasPrice: "100000000000"
+        }
+      )
+
+      // Obtain gas used from the tx0 receipt
+      const gasUsedTx0 = web3.utils.toBN(await tx0Receipt.receipt.gasUsed)
+
+      // Balance after tx0
+      const balanceAcc1AfterTx0 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
+
+      const txCost = gasUsedTx0.mul(web3.utils.toBN("100000000000"))
+
+      assert.equal(
+        (
+          balanceAcc1AfterTx0.add(
+            web3.utils.toBN("10000000000000000000")
+          ).add(
+            web3.utils.toBN("10000002000")
+          ).add(
+            txCost
+          )
+        ).toString(),
+        initialBalanceAcc1.toString(),
+        "Must be equal (tx0)"
+      )
+
+      /******************************* Partial Take tx *******************************/
+      const initialBalanceAcc2 = await web3.eth.getBalance(accounts[2])
+
+      const maxAmountToBet = await goalBetInstance.getMaxAmountToBet.call(
+        "0"
+      )
+
+      assert.equal(
+        maxAmountToBet.toString(),
+        "10000000000000000000",
+        "MaxAmountToBet must be 1 ether"
+      )
+
+      const tx1Receipt = await goalBetInstance.take(
+        "0",
+        {
+          from: accounts[2],
+          value: "5000000000000000000",
+          gasPrice: "100000000000"
+        }
+      )
+
+      // Obtain gas used from the tx1 receipt
+      const gasUsedTx1 = web3.utils.toBN(tx1Receipt.receipt.gasUsed)
+
+      // Balance after tx0
+      const balanceAcc2AfterTx1 = web3.utils.toBN(await web3.eth.getBalance(accounts[2]))
+
+      const tx1Cost = gasUsedTx1.mul(web3.utils.toBN("100000000000"))
+
+      assert.equal(
+        balanceAcc2AfterTx1.add(tx1Cost).add(web3.utils.toBN("5000000000000000000")).toString(),
+        initialBalanceAcc2.toString(),
+        "Must be equal (tx1)"
+      )
+
+      /******************************* Partial withdraw tx *******************************/
+      // Wait 5s for the bet period end
+      await timeout(5000)
+
+      await goalBetInstance.withdraw(
+        "0",
+        {
+          value: "0",
+          gasPrice: "100000000000"
+        }
+      )
+
+      // Balance after tx1
+      const balanceAcc1AfterTx1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
+
+      // Acc1 must increase his balance of 0.5 ether
+      assert.equal(
+        balanceAcc1AfterTx1.toString(),
+        balanceAcc1AfterTx0.add(web3.utils.toBN("5000000000000000000")).toString(),
+        "Must be equal (tx1)"
+      )
+    })
+
+    it('should bet, partial take and withdraw the rest by asker after the bet period (ratio 10:1)', async () => {
+      const goalBetInstance = await GoalBet.new(governor)
+
+      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
+      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+
+      /******************************* Bet tx *******************************/
+      const initialBalanceAcc1 = await web3.eth.getBalance(accounts[3])
+
+      const endBetPeriod = Math.floor((Date.now() + 100) / 1000) + 2
+      const startClaimPeriod = Math.floor(Date.now() / 1000) + 3
+      const endClaimEndPeriod = Math.floor(Date.now() / 1000) + 6
+
+      const tx0Receipt = await goalBetInstance.ask(
+        "_description",
+        [
+          endBetPeriod.toString(),
+          startClaimPeriod.toString(),
+          endClaimEndPeriod.toString()
+        ],
+        ["10", "1"],
+        [],
+        enhancedAppealableArbitrator.address.toString(),
+        "0x0",
+        [1,1,1],
+        {
+          from: accounts[3],
+          value: web3.utils.toBN("9000000000000000000").add(web3.utils.toBN("10000002000")).toString(), // 0.9 ether + totalCost
+          gasPrice: "100000000000"
+        }
+      )
+
+      // Obtain gas used from the tx0 receipt
+      const gasUsedTx0 = web3.utils.toBN(await tx0Receipt.receipt.gasUsed)
+
+      // Balance after tx0
+      const balanceAcc1AfterTx0 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
+
+      const txCost = gasUsedTx0.mul(web3.utils.toBN("100000000000"))
+
+      assert.equal(
+        (
+          balanceAcc1AfterTx0.add(
+            web3.utils.toBN("9000000000000000000")
+          ).add(
+            web3.utils.toBN("10000002000")
+          ).add(
+            txCost
+          )
+        ).toString(),
+        initialBalanceAcc1.toString(),
+        "Must be equal (tx0)"
+      )
+
+      /******************************* Partial Take tx *******************************/
+      const initialBalanceAcc2 = await web3.eth.getBalance(accounts[2])
+
+      const maxAmountToBet = await goalBetInstance.getMaxAmountToBet.call(
+        "0"
+      )
+
+      assert.equal(
+        maxAmountToBet.toString(),
+        "1000000000000000000",
+        "MaxAmountToBet must be 0.1 ether"
+      )
+
+      const tx1Receipt = await goalBetInstance.take(
+        "0",
+        {
+          from: accounts[2],
+          value: "100000000000000000", // 0.01 Ether
+          gasPrice: "100000000000"
+        }
+      )
+
+      // Obtain gas used from the tx1 receipt
+      const gasUsedTx1 = web3.utils.toBN(tx1Receipt.receipt.gasUsed)
+
+      // Balance after tx0
+      const balanceAcc2AfterTx1 = web3.utils.toBN(await web3.eth.getBalance(accounts[2]))
+
+      const tx1Cost = gasUsedTx1.mul(web3.utils.toBN("100000000000"))
+
+      assert.equal(
+        balanceAcc2AfterTx1.add(tx1Cost).add(web3.utils.toBN("100000000000000000")).toString(),
+        initialBalanceAcc2.toString(),
+        "Must be equal (tx1)"
+      )
+
+      /******************************* Partial withdraw tx *******************************/
+      // Wait 5s for the bet period end
+      await timeout(5000)
+
+      // Balance after tx2
+      const balanceAcc1AfterTx2 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
+
+      await goalBetInstance.withdraw(
+        "0",
+        {
+          value: "0",
+          gasPrice: "100000000000"
+        }
+      )
+
+      // Balance after withdraw
+      const balanceAcc1AfterWithdraw = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
+
+      // Acc1 must increase his balance of 0.8 ether
+      assert.equal(
+        balanceAcc1AfterWithdraw.toString(),
+        balanceAcc1AfterTx0.add(web3.utils.toBN("8100000000000000000")).toString(),
+        "Must be equal (tx3)"
+      )
     })
 
     it('should bet revert if the ratio[1] > ratio[0]', async () => {

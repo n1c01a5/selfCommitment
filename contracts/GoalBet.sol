@@ -1563,14 +1563,15 @@ contract GoalBet is IArbitrable {
     if (bet.amount[1] == 0)
       executeRuling(_id, uint(Party.Asker));
     else {
-      uint maxAmountToTake = bet.amount[1]*bet.ratio[0]/bet.ratio[1];
+      uint maxAmountToTake = bet.amount[1] * bet.ratio[0] / bet.ratio[1];
+      uint amountToAsk = maxAmountToTake - bet.amount[1];
       address payable asker = address(uint160(bet.parties[1]));
 
-      require(bet.amount[0] > maxAmountToTake);
+      require(bet.amount[0] > amountToAsk);
 
-      asker.send(bet.amount[0] - maxAmountToTake);
+      asker.send(bet.amount[0] - amountToAsk);
 
-      bet.amount[0] -= bet.amount[0] - maxAmountToTake;
+      bet.amount[0] = amountToAsk;
     }
   }
 
