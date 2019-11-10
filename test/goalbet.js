@@ -448,14 +448,13 @@ contract('GoalBet', (accounts) => {
       const gasUsedTx2 = web3.utils.toBN(tx2Receipt.receipt.gasUsed)
 
       // Obtain gasPrice from the transaction
-      const tx2 = await web3.eth.getTransaction(tx2Receipt.tx)
-      const gasPriceTx2 = tx2.gasPrice
+      const tx2Cost = gasUsedTx2.mul(web3.utils.toBN("100000000000"))
 
       // Balance after tx2
       const balanceAcc3AfterTx2 = web3.utils.toBN(await web3.eth.getBalance(accounts[7]))
 
       assert.equal(
-        (Number(balanceAcc3AfterTx2) + (gasPriceTx2 * gasUsedTx2) + 2500000000000000000).toString(),
+        balanceAcc3AfterTx2.add(tx2Cost).add(web3.utils.toBN("2500000000000000000")).toString(),
         initialBalanceAcc3.toString(),
         "Must be equal (tx2)"
       )
@@ -477,15 +476,14 @@ contract('GoalBet', (accounts) => {
       const gasUsedTx3 = web3.utils.toBN(tx3Receipt.receipt.gasUsed)
 
       // Obtain gasPrice from the transaction
-      const tx3 = await web3.eth.getTransaction(tx3Receipt.tx)
-      const gasPriceTx3 = tx3.gasPrice
+      const tx3Cost = gasUsedTx3.mul(web3.utils.toBN("100000000000"))
 
       // Balance after tx3
       const balanceAcc3AfterTx3 = web3.utils.toBN(await web3.eth.getBalance(accounts[7]))
 
       assert.equal(
-        (Number(balanceAcc3AfterTx3) + (gasPriceTx3 * gasUsedTx3)).toString(),
-        Number(balanceAcc3AfterTx2),
+        balanceAcc3AfterTx3.add(tx3Cost).add(web3.utils.toBN("1000")).toString(),
+        balanceAcc3AfterTx2.toString(),
         "Must be equal (tx3)"
       )
 
@@ -504,7 +502,7 @@ contract('GoalBet', (accounts) => {
 
       assert.equal(
         balanceAcc3AfterTimeOutByAsker,
-        (Number(balanceAcc3AfterTx3) + 5000000000000000000 + 1000).toString(),
+        balanceAcc3AfterTx3.add(web3.utils.toBN("5000000000000000000")).add(web3.utils.toBN("1000")).toString(),
         "Must be equal (tx4)"
       )
     })
