@@ -15,8 +15,6 @@ const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 contract('SelfCommitment', (accounts) => {
   const governor = accounts[0]
-  const asker = accounts[1]
-  const taker = accounts[2]
   const arbitratorExtraData = "0x0"
   const baseDeposit = 10 ** 10
   const arbitrationCost = "1000"
@@ -156,7 +154,7 @@ contract('SelfCommitment', (accounts) => {
       const tx1Receipt = await selfCommitmentInstance.take(
         "0",
         {
-          from: taker,
+          from: accounts[2],
           value: "100000000000000",
           gasPrice: "100000000000"
         }
@@ -180,8 +178,8 @@ contract('SelfCommitment', (accounts) => {
       // Balance after tx1
       const balanceAcc1AfterTx1 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
 
-      // Wait 3s for the bet period end
-      await timeout(4000)
+      // Wait 4.8s for the bet period end
+      await timeout(4800)
 
       const claimCost = web3.utils.toBN(
         await selfCommitmentInstance.getClaimCost.call(
@@ -239,6 +237,17 @@ contract('SelfCommitment', (accounts) => {
         contractBalance.toString(),
         "0",
         "Must be 0."
+      )
+
+      await arbitrableBetList.executeRequest("0")
+
+      // Balance after execute request on arbitrationListBet
+      const balanceAcc1AfterExecuteRequest = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
+
+      assert.equal(
+        balanceAcc1AfterExecuteRequest.toString(),
+        balanceAcc1AfterTx3.add(web3.utils.toBN("10000002000")).toString(),
+        "Must be equal (execute request)"
       )
     })
 
@@ -577,7 +586,7 @@ contract('SelfCommitment', (accounts) => {
       )
     })
 
-    it('should bet, multiple takes and claim takers', async () => {
+    it('should bet, multiple takes and claim accounts[2]s', async () => {
       const selfCommitmentInstance = await SelfCommitment.new(governor)
 
       await arbitrableBetList.changeSelfCommitmentRegistry(selfCommitmentInstance.address)
