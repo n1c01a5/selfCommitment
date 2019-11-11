@@ -1,4 +1,4 @@
-const GoalBet = artifacts.require("GoalBet")
+const SelfCommitment = artifacts.require("SelfCommitment")
 const ArbitrableBetList = artifacts.require("ArbitrableBetList")
 const truffleAssert = require('truffle-assertions')
 const AppealableArbitrator = artifacts.require(
@@ -13,7 +13,7 @@ I assume the test coverage is very low. PRs are welcome! */
 
 const timeout = ms => new Promise(resolve => setTimeout(resolve, ms))
 
-contract('GoalBet', (accounts) => {
+contract('SelfCommitment', (accounts) => {
   const governor = accounts[0]
   const asker = accounts[1]
   const taker = accounts[2]
@@ -87,10 +87,10 @@ contract('GoalBet', (accounts) => {
     })
 
     it('should bet 2:1, take and claim', async () => {
-      const goalBetInstance = await GoalBet.new(governor)
+      const selfCommitmentInstance = await SelfCommitment.new(governor)
 
-      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
-      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+      await arbitrableBetList.changeSelfCommitmentRegistry(selfCommitmentInstance.address)
+      await selfCommitmentInstance.changeArbitrationBetList(arbitrableBetList.address)
 
       /******************************* Bet tx *******************************/
       const initialBalanceAcc1 = await web3.eth.getBalance(accounts[3])
@@ -99,7 +99,7 @@ contract('GoalBet', (accounts) => {
       const startClaimPeriod = Math.floor(Date.now() / 1000) + 3
       const endClaimEndPeriod = Math.floor(Date.now() / 1000) + 6
 
-      const tx0Receipt = await goalBetInstance.ask(
+      const tx0Receipt = await selfCommitmentInstance.ask(
         "_description",
         [
           endBetPeriod.toString(),
@@ -143,7 +143,7 @@ contract('GoalBet', (accounts) => {
       /******************************* Take tx *******************************/
       const initialBalanceAcc2 = await web3.eth.getBalance(accounts[2])
 
-      const maxAmountToBet = await goalBetInstance.getMaxAmountToBet.call(
+      const maxAmountToBet = await selfCommitmentInstance.getMaxAmountToBet.call(
         "0"
       )
 
@@ -153,7 +153,7 @@ contract('GoalBet', (accounts) => {
         "MaxAmountToBet must be 100000000000000 Wei"
       )
 
-      const tx1Receipt = await goalBetInstance.take(
+      const tx1Receipt = await selfCommitmentInstance.take(
         "0",
         {
           from: taker,
@@ -184,14 +184,14 @@ contract('GoalBet', (accounts) => {
       await timeout(4000)
 
       const claimCost = web3.utils.toBN(
-        await goalBetInstance.getClaimCost.call(
+        await selfCommitmentInstance.getClaimCost.call(
           "0"
         )
       )
 
       assert.equal(claimCost.toString(), "1000", "Must be 1000wei")
 
-      const tx2Receipt = await goalBetInstance.claimAsker(
+      const tx2Receipt = await selfCommitmentInstance.claimAsker(
         "0",
         {
           value: "1000",
@@ -216,7 +216,7 @@ contract('GoalBet', (accounts) => {
       // Wait 3s for the bet period end
       await timeout(3000)
 
-      await goalBetInstance.timeOutByAsker(
+      await selfCommitmentInstance.timeOutByAsker(
         "0",
         {
           value: "0",
@@ -233,7 +233,7 @@ contract('GoalBet', (accounts) => {
         "Must be equal (tx3)"
       )
 
-      const contractBalance = web3.utils.toBN(await web3.eth.getBalance(goalBetInstance.address))
+      const contractBalance = web3.utils.toBN(await web3.eth.getBalance(selfCommitmentInstance.address))
 
       assert.equal(
         contractBalance.toString(),
@@ -243,10 +243,10 @@ contract('GoalBet', (accounts) => {
     })
 
     it('should bet and withdraw after the period bet end', async () => {
-      const goalBetInstance = await GoalBet.new(governor)
+      const selfCommitmentInstance = await SelfCommitment.new(governor)
 
-      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
-      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+      await arbitrableBetList.changeSelfCommitmentRegistry(selfCommitmentInstance.address)
+      await selfCommitmentInstance.changeArbitrationBetList(arbitrableBetList.address)
 
       /******************************* Bet tx *******************************/
       const initialBalanceAcc1 = web3.utils.toBN(await web3.eth.getBalance(accounts[8]))
@@ -255,7 +255,7 @@ contract('GoalBet', (accounts) => {
       const startClaimPeriod = Math.floor(Date.now() / 1000) + 2
       const endClaimEndPeriod = Math.floor(Date.now() / 1000) + 4
 
-      const tx0Receipt = await goalBetInstance.ask(
+      const tx0Receipt = await selfCommitmentInstance.ask(
         "_description",
         [
           endBetPeriod.toString(),
@@ -293,7 +293,7 @@ contract('GoalBet', (accounts) => {
       // Wait 3s for the bet period end
       await timeout(3000)
 
-      await goalBetInstance.withdraw(
+      await selfCommitmentInstance.withdraw(
         "0",
         {
           value: "0",
@@ -315,10 +315,10 @@ contract('GoalBet', (accounts) => {
     })
 
     it('should bet, partial take and withdraw the rest by asker after the bet period (ratio 2:1)', async () => {
-      const goalBetInstance = await GoalBet.new(governor)
+      const selfCommitmentInstance = await SelfCommitment.new(governor)
 
-      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
-      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+      await arbitrableBetList.changeSelfCommitmentRegistry(selfCommitmentInstance.address)
+      await selfCommitmentInstance.changeArbitrationBetList(arbitrableBetList.address)
 
       /******************************* Bet tx *******************************/
       const initialBalanceAcc1 = await web3.eth.getBalance(accounts[3])
@@ -327,7 +327,7 @@ contract('GoalBet', (accounts) => {
       const startClaimPeriod = Math.floor(Date.now() / 1000) + 3
       const endClaimEndPeriod = Math.floor(Date.now() / 1000) + 6
 
-      const tx0Receipt = await goalBetInstance.ask(
+      const tx0Receipt = await selfCommitmentInstance.ask(
         "_description",
         [
           endBetPeriod.toString(),
@@ -371,7 +371,7 @@ contract('GoalBet', (accounts) => {
       /******************************* Partial Take tx *******************************/
       const initialBalanceAcc2 = await web3.eth.getBalance(accounts[2])
 
-      const maxAmountToBet = await goalBetInstance.getMaxAmountToBet.call(
+      const maxAmountToBet = await selfCommitmentInstance.getMaxAmountToBet.call(
         "0"
       )
 
@@ -381,7 +381,7 @@ contract('GoalBet', (accounts) => {
         "MaxAmountToBet must be 1 ether"
       )
 
-      const tx1Receipt = await goalBetInstance.take(
+      const tx1Receipt = await selfCommitmentInstance.take(
         "0",
         {
           from: accounts[2],
@@ -408,7 +408,7 @@ contract('GoalBet', (accounts) => {
       // Wait 5s for the bet period end
       await timeout(5000)
 
-      await goalBetInstance.withdraw(
+      await selfCommitmentInstance.withdraw(
         "0",
         {
           value: "0",
@@ -428,10 +428,10 @@ contract('GoalBet', (accounts) => {
     })
 
     it('should bet, partial take and withdraw the rest by asker after the bet period (ratio 10:1)', async () => {
-      const goalBetInstance = await GoalBet.new(governor)
+      const selfCommitmentInstance = await SelfCommitment.new(governor)
 
-      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
-      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+      await arbitrableBetList.changeSelfCommitmentRegistry(selfCommitmentInstance.address)
+      await selfCommitmentInstance.changeArbitrationBetList(arbitrableBetList.address)
 
       /******************************* Bet tx *******************************/
       const initialBalanceAcc1 = await web3.eth.getBalance(accounts[3])
@@ -440,7 +440,7 @@ contract('GoalBet', (accounts) => {
       const startClaimPeriod = Math.floor(Date.now() / 1000) + 3
       const endClaimEndPeriod = Math.floor(Date.now() / 1000) + 6
 
-      const tx0Receipt = await goalBetInstance.ask(
+      const tx0Receipt = await selfCommitmentInstance.ask(
         "_description",
         [
           endBetPeriod.toString(),
@@ -484,7 +484,7 @@ contract('GoalBet', (accounts) => {
       /******************************* Partial Take tx *******************************/
       const initialBalanceAcc2 = await web3.eth.getBalance(accounts[2])
 
-      const maxAmountToBet = await goalBetInstance.getMaxAmountToBet.call(
+      const maxAmountToBet = await selfCommitmentInstance.getMaxAmountToBet.call(
         "0"
       )
 
@@ -494,7 +494,7 @@ contract('GoalBet', (accounts) => {
         "MaxAmountToBet must be 0.1 ether"
       )
 
-      const tx1Receipt = await goalBetInstance.take(
+      const tx1Receipt = await selfCommitmentInstance.take(
         "0",
         {
           from: accounts[2],
@@ -524,7 +524,7 @@ contract('GoalBet', (accounts) => {
       // Balance after tx2
       const balanceAcc1AfterTx2 = web3.utils.toBN(await web3.eth.getBalance(accounts[3]))
 
-      await goalBetInstance.withdraw(
+      await selfCommitmentInstance.withdraw(
         "0",
         {
           value: "0",
@@ -544,10 +544,10 @@ contract('GoalBet', (accounts) => {
     })
 
     it('should bet revert if the ratio[1] > ratio[0]', async () => {
-      const goalBetInstance = await GoalBet.new(governor)
+      const selfCommitmentInstance = await SelfCommitment.new(governor)
 
-      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
-      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+      await arbitrableBetList.changeSelfCommitmentRegistry(selfCommitmentInstance.address)
+      await selfCommitmentInstance.changeArbitrationBetList(arbitrableBetList.address)
 
       /******************************* Bet tx *******************************/
       const endBetPeriod = Math.floor(Date.now() / 1000) + 60
@@ -555,7 +555,7 @@ contract('GoalBet', (accounts) => {
       const endClaimendPeriod = Math.floor(Date.now() / 1000) + 180
 
       await truffleAssert.fails(
-        goalBetInstance.ask(
+        selfCommitmentInstance.ask(
           "_description",
           [
             endBetPeriod.toString(),
@@ -578,10 +578,10 @@ contract('GoalBet', (accounts) => {
     })
 
     it('should bet, multiple takes and claim takers', async () => {
-      const goalBetInstance = await GoalBet.new(governor)
+      const selfCommitmentInstance = await SelfCommitment.new(governor)
 
-      await arbitrableBetList.changeGoalBetRegistry(goalBetInstance.address)
-      await goalBetInstance.changeArbitrationBetList(arbitrableBetList.address)
+      await arbitrableBetList.changeSelfCommitmentRegistry(selfCommitmentInstance.address)
+      await selfCommitmentInstance.changeArbitrationBetList(arbitrableBetList.address)
 
       /******************************* Bet tx *******************************/
       const initialBalanceAcc1 = web3.utils.toBN(await web3.eth.getBalance(accounts[5]))
@@ -590,7 +590,7 @@ contract('GoalBet', (accounts) => {
       const startClaimPeriod = Math.floor(Date.now() / 1000) + 3
       const endClaimEndPeriod = Math.floor(Date.now() / 1000) + 6
 
-      const tx0Receipt = await goalBetInstance.ask(
+      const tx0Receipt = await selfCommitmentInstance.ask(
         "_description",
         [
           endBetPeriod.toString(),
@@ -627,7 +627,7 @@ contract('GoalBet', (accounts) => {
       /******************************* Take 1 tx *******************************/
       const initialBalanceAcc2 = web3.utils.toBN(await web3.eth.getBalance(accounts[6]))
 
-      const tx1Receipt = await goalBetInstance.take(
+      const tx1Receipt = await selfCommitmentInstance.take(
         "0",
         {
           from: accounts[6],
@@ -654,7 +654,7 @@ contract('GoalBet', (accounts) => {
       /******************************* Take 2 tx *******************************/
       const initialBalanceAcc3 = web3.utils.toBN(await web3.eth.getBalance(accounts[7]))
 
-      const maxAmountToBet = await goalBetInstance.getMaxAmountToBet.call(
+      const maxAmountToBet = await selfCommitmentInstance.getMaxAmountToBet.call(
         "0"
       )
 
@@ -664,7 +664,7 @@ contract('GoalBet', (accounts) => {
         "MaxAmountToBet must be 0.5 ether"
       )
 
-      const tx2Receipt = await goalBetInstance.take(
+      const tx2Receipt = await selfCommitmentInstance.take(
         "0",
         {
           from: accounts[7],
@@ -692,7 +692,7 @@ contract('GoalBet', (accounts) => {
       // Wait 4s for the bet period end
       await timeout(4500)
 
-      const tx3Receipt = await goalBetInstance.claimTaker(
+      const tx3Receipt = await selfCommitmentInstance.claimTaker(
         "0",
         {
           value: "1000",
@@ -719,7 +719,7 @@ contract('GoalBet', (accounts) => {
       // Wait 4s for the bet period end.
       await timeout(4000)
 
-      await goalBetInstance.timeOutByTaker(
+      await selfCommitmentInstance.timeOutByTaker(
         "0",
         {
           value: "0",
@@ -727,7 +727,7 @@ contract('GoalBet', (accounts) => {
         }
       )
 
-      await goalBetInstance.withdrawFeesAndRewards(
+      await selfCommitmentInstance.withdrawFeesAndRewards(
         accounts[7],
         "0",
         "0",

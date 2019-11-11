@@ -606,7 +606,7 @@ contract ArbitrableBetList is IArbitrable {
   address public governor; // The address that can make governance changes to the parameters of the Bet Curated Registry.
   Arbitrator arbitrator;
   bytes public arbitratorExtraData;
-  address public goalBetRegistry; // The address of the goalBetRegistry contract.
+  address public selfCommitmentRegistry; // The address of the selfCommitmentRegistry contract.
   uint public requesterBaseDeposit; // The base deposit to make a request.
   uint public challengerBaseDeposit; // The base deposit to challenge a request.
   uint public challengePeriodDuration; // The time before a request becomes executable if not challenged.
@@ -733,7 +733,7 @@ contract ArbitrableBetList is IArbitrable {
 
     if (bet.requests.length == 0) {
       // Initial bet registration.
-      require(msg.sender == goalBetRegistry);
+      require(msg.sender == selfCommitmentRegistry);
       betList.push(_betID);
 
       emit BetSubmitted(_betID, _sender);
@@ -1082,10 +1082,10 @@ contract ArbitrableBetList is IArbitrable {
   }
 
   /** @dev Change the address of the goal bet registry contract.
-  *  @param _goalBetRegistry The address of the new goal bet registry contract.
+  *  @param _selfCommitmentRegistry The address of the new goal bet registry contract.
   */
-  function changeGoalBetRegistry(address _goalBetRegistry) external onlyGovernor {
-    goalBetRegistry = _goalBetRegistry;
+  function changeSelfCommitmentRegistry(address _selfCommitmentRegistry) external onlyGovernor {
+    selfCommitmentRegistry = _selfCommitmentRegistry;
   }
 
   /** @dev Change the percentage of arbitration fees that must be paid as fee stake by parties when there isn't a winner or loser.
@@ -1371,7 +1371,7 @@ contract ArbitrableBetList is IArbitrable {
   }
 }
 
-contract GoalBet is IArbitrable {
+contract SelfCommitment is IArbitrable {
 
   using CappedMath for uint; // Operations bounded between 0 and 2**256 - 1.
 
